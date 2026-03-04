@@ -9,7 +9,7 @@ interface DayAssignmentDao {
     suspend fun getAll(): List<DayAssignment>
 
     @Query("SELECT * FROM day_assignments WHERE day = :day LIMIT 1")
-    suspend fun getByDay(day: String): DayAssignment?   // <-- додано
+    suspend fun getByDay(day: String): DayAssignment?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(assignment: DayAssignment)

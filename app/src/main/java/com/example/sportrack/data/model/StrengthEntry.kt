@@ -10,7 +10,7 @@ data class StrengthEntry(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val date: Long,
-    val liftType: String, // например "Bench", "Squat", "Deadlift" или "Pull-up"
-    val weight: Double, // рабочий вес
+    val liftType: String,
+    val weight: Double,
     val reps: Int
 )

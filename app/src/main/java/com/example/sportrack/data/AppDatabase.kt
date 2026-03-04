@@ -29,7 +29,7 @@ import com.example.sportrack.data.model.WorkoutTemplate
         WorkoutTemplate::class,
         WorkoutExercise::class
     ],
-    version = 6, // підняти версію (було 5)
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -50,7 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "app_database")
-                    .fallbackToDestructiveMigration() // для розробки OK — у продакшені робити міграції
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { Instance = it }
             }

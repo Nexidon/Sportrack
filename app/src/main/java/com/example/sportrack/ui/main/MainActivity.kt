@@ -37,7 +37,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // підписка на стан теми через collectAsStateWithLifecycle
             val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 
             SportrackTheme(darkTheme = uiState.isDarkTheme) {
@@ -47,7 +46,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// --- навігаційні екрани ---
 sealed class Screen(
     val route: String,
     val title: String,

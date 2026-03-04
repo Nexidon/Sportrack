@@ -6,5 +6,5 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "day_assignments")
 data class DayAssignment(
     @PrimaryKey val day: String,
-    val groups: String // храним через запятую: "Спина,Ноги,Біцепс"
+    val groups: String
 )
