@@ -33,7 +33,7 @@ fun MeasurementChart(
             .fillMaxWidth()
             .height(250.dp)
             .padding(8.dp),
-        factory = { context -> /* оригинальная фабрика */ LineChart(context).apply {
+        factory = { context -> LineChart(context).apply {
             description.isEnabled = false
             setTouchEnabled(true)
             isDragEnabled = true

@@ -66,11 +66,6 @@ fun ProgressScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Прогрес", style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    IconButton(onClick = { /* Можно добавить refresh action */ }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
                 )

@@ -7,6 +7,6 @@ import androidx.room.PrimaryKey
 data class WeightEntry(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val date: Long, // Используем timestamp (Long) для даты
+    val date: Long,
     val weight: Double
 )

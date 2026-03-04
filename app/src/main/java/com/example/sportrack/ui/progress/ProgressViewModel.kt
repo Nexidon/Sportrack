@@ -32,11 +32,9 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
     // Strength entries
     val allStrengths: Flow<List<StrengthEntry>> = strengthDao.getAllEntries()
 
-    // SharedPreferences для целей (можно хранить цели по разным ключам)
     private val prefs: SharedPreferences =
         application.getSharedPreferences("progress_prefs", Context.MODE_PRIVATE)
 
-    // Флоу для основной цели по весу (legacy, чтобы UI, который полагается на .goal работал)
     private val _goal =
         MutableStateFlow<Double?>(prefs.getFloat("goal", -1f).takeIf { it >= 0 }?.toDouble())
     val goal = _goal.asStateFlow()
@@ -46,7 +44,6 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         prefs.edit().putFloat("goal", value.toFloat()).apply()
     }
 
-    // Универсальные функции для целей по произвольной метрике (ключ в prefs: "goal_<key>")
     fun saveGoalFor(key: String, value: Double) {
         prefs.edit().putFloat("goal_$key", value.toFloat()).apply()
     }
@@ -56,7 +53,6 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         return if (!v.isNaN()) v.toDouble() else null
     }
 
-    // --- Weight methods ---
     fun saveWeight(weight: Double) {
         viewModelScope.launch {
             val newEntry = WeightEntry(date = System.currentTimeMillis(), weight = weight)
@@ -76,7 +72,6 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // --- Measurement methods ---
     fun saveMeasurement(entry: MeasurementEntry) {
         viewModelScope.launch {
             measurementDao.insert(entry)
@@ -114,9 +109,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // ------------------------------
-    // Функции для фильтрации по периоду (универсальная)
-    // ------------------------------
+
     fun <T> filterByPeriod(entries: List<T>, period: Period, extractor: (T) -> Long): List<T> {
         if (period == Period.ALL) return entries
         val now = System.currentTimeMillis()
@@ -131,30 +124,22 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         return entries.filter { extractor(it) >= from && extractor(it) <= now }
     }
 
-    // ------------------------------
-    // Агрегаторы для силовых данных
-    // ------------------------------
 
-    // Возвращает для каждого liftType запись с максимальным весом (max weight)
     fun maxByLiftType(entries: List<StrengthEntry>): Map<String, StrengthEntry> {
         return entries.groupBy { it.liftType }
             .mapValues { (_, list) -> list.maxByOrNull { it.weight }!! }
     }
 
-    // Суммарный рабочий тоннаж по liftType (weight * reps суммируется)
     fun sumTonnageByLiftType(entries: List<StrengthEntry>): Map<String, Double> {
         return entries.groupBy { it.liftType }
             .mapValues { (_, list) -> list.sumOf { it.weight * it.reps } }
     }
 
-    // Агрегировать по дням: для построения столбиков по датам (например суммарный тоннаж в день)
     fun sumTonnageByDay(entries: List<StrengthEntry>): Map<Long, Double> {
-        // Ключ — начало дня (timestamp в ms)
         val map = mutableMapOf<Long, Double>()
         val cal = Calendar.getInstance()
         for (e in entries) {
             cal.timeInMillis = e.date
-            // обнуляем время (оставляем только дату)
             cal.set(Calendar.HOUR_OF_DAY, 0)
             cal.set(Calendar.MINUTE, 0)
             cal.set(Calendar.SECOND, 0)
@@ -163,11 +148,9 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             val ton = e.weight * e.reps
             map[dayStart] = (map[dayStart] ?: 0.0) + ton
         }
-        // Возвращаем упорядоченную по дате карту
         return map.toList().sortedBy { it.first }.toMap()
     }
 
-    // Утилиты для UI: получить веса/замеры/силовые для выбранного периода (suspend не нужен, т.к. входные данные обычно берутся из Flow и доступны в UI)
     fun filterWeightsForPeriod(entries: List<WeightEntry>, period: Period): List<WeightEntry> {
         return filterByPeriod(entries, period) { it.date }
     }

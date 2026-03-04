@@ -6,10 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/**
- * Простий seeder — додає прикладні вправи, якщо таблиця порожня.
- * Виклич один раз при старті додатку (наприклад у LaunchedEffect в MainActivity/TrainingScreen або в Application.onCreate).
- */
+
 
 object DefaultExercisesSeeder {
 
@@ -315,10 +312,6 @@ object DefaultExercisesSeeder {
         )
     )
 
-    /**
-     * Неспеціальна асинхронна обгортка — викликай з UI (LaunchedEffect/CoroutineScope) або напряму:
-     * DefaultExercisesSeeder.seedIfNeeded(context)
-     */
     fun seedIfNeeded(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             val db = AppDatabase.getDatabase(context)

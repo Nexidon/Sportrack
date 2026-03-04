@@ -19,7 +19,6 @@ interface WorkoutExerciseDao {
     @Query("SELECT * FROM workout_exercises WHERE workoutId = :workoutId ORDER BY position")
     suspend fun getForWorkout(workoutId: Long): List<WorkoutExercise>
 
-    // Простіша функція: отримати повні дані вправ для воркаута (JOIN)
     @Transaction
     @Query("""
         SELECT e.* FROM exercises e
