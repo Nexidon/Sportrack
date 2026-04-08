@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <issue id="UnusedResources" severity="error" />
+    <issue id="UnusedIds" severity="error" />
+
+    <issue id="HardcodedText" severity="warning" />
+
+    <issue id="IconMissingDensityFolder" severity="ignore" />
+
+    <issue id="all">
+        <ignore path="**/build/**" />
+        <ignore path="**/generated/**" />
+    </issue>
+</lint>
