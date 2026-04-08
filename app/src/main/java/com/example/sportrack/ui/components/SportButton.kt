@@ -19,6 +19,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.sportrack.ui.theme.SportGreen
 
+/**
+ * Стандартизована кнопка для інтерфейсу Sportrack.
+ * Має вбудований ефект об'єму (тіні) та підтримує стан активності (увімкнена/вимкнена).
+ *
+ * @param text Текст, який буде відображатись на кнопці (автоматично переводиться у верхній регістр).
+ * @param onClick Дія (колбек), яка виконується при натисканні на кнопку.
+ * @param color Основний колір кнопки (за замовчуванням [SportGreen]).
+ * @param enabled Визначає, чи активна кнопка (якщо false - кнопка стає сірою і не клікабельною).
+ * @param modifier Модифікатор для налаштування розміщення та відступів компонента.
+ */
 @Composable
 fun SportButton(
     text: String,
@@ -26,29 +36,27 @@ fun SportButton(
     color: Color = SportGreen,
     enabled: Boolean = true,
     modifier: Modifier
-)
-{
-val mainColor = if (enabled) color else Color.LightGray
-val shadowColor = if (enabled) color.copy(alpha = 0.7f).compositeOver(Color.Black) else Color.Gray
+) {
+    val mainColor = if (enabled) color else Color.LightGray
+    val shadowColor = if (enabled) color.copy(alpha = 0.7f).compositeOver(Color.Black) else Color.Gray
 
     Box(
-            modifier = modifier
-                .height(56.dp)
-                .fillMaxWidth()
-                .clickable(enabled = enabled, onClick = onClick),
-    contentAlignment = Alignment.Center
-    )
-    {
+        modifier = modifier
+            .height(56.dp)
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
         Box(
             modifier = Modifier.fillMaxSize().background(shadowColor, RoundedCornerShape(16.dp))
-
         )
-        Box(modifier = Modifier
-            .fillMaxSize().
-            padding(bottom = 4.dp).
-            background(mainColor,RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center)
-        {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 4.dp)
+                .background(mainColor, RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center
+        ) {
             Text(
                 text = text.uppercase(),
                 style = MaterialTheme.typography.titleMedium,

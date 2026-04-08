@@ -1,0 +1,37 @@
+openapi: 3.0.0
+info:
+  title: Sportrack Cloud Sync API
+  description: API для синхронізації локальних тренувань з хмарним сервером.
+  version: 1.0.0
+servers:
+  - url: https://api.sportrack.com/v1
+paths:
+  /workouts/sync:
+    post:
+      summary: Синхронізувати локальні тренування з хмарою
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Workout'
+      responses:
+        '200':
+          description: Успішна синхронізація
+          content:
+            application/json:
+              example: { "status": "success", "synced_count": 5 }
+components:
+  schemas:
+    Workout:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: integer
+          description: Unix timestamp
+        exercises_count:
+          type: integer

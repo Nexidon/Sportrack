@@ -3,11 +3,12 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp") // тут БЕЗ version
+    id("org.jetbrains.dokka") version "1.9.10"
 }
 
 android {
     namespace = "com.example.sportrack"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.sportrack"
@@ -41,11 +42,12 @@ android {
 }
 
 dependencies {
-    implementation(libs.androidx.foundation)
-    implementation(libs.androidx.foundation.layout)
-    implementation(libs.material3)
-    implementation(libs.androidx.datastore.core)
-    implementation(libs.ui.graphics)
+    implementation("androidx.compose.foundation:foundation:1.6.0")
+    implementation("androidx.compose.foundation:foundation-layout:1.6.0")
+    implementation("androidx.compose.material3:material3:1.2.0")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.compose.material:material:1.6.0")
+    implementation("androidx.compose.ui:ui:1.6.0")
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
@@ -82,7 +84,6 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.material)
 
     // Tests
     testImplementation(libs.junit)
