@@ -11,6 +11,7 @@ import com.example.sportrack.data.dao.StrengthEntryDao
 import com.example.sportrack.data.dao.WeightEntryDao
 import com.example.sportrack.data.dao.WorkoutDao
 import com.example.sportrack.data.dao.WorkoutExerciseDao
+import com.example.sportrack.data.dao.WorkoutLogDao
 import com.example.sportrack.data.model.DayAssignment
 import com.example.sportrack.data.model.Exercise
 import com.example.sportrack.data.model.MeasurementEntry
@@ -18,6 +19,7 @@ import com.example.sportrack.data.model.StrengthEntry
 import com.example.sportrack.data.model.WeightEntry
 import com.example.sportrack.data.model.WorkoutExercise
 import com.example.sportrack.data.model.WorkoutTemplate
+import com.example.sportrack.data.model.WorkoutLog
 
 @Database(
     entities = [
@@ -27,9 +29,10 @@ import com.example.sportrack.data.model.WorkoutTemplate
         DayAssignment::class,
         Exercise::class,
         WorkoutTemplate::class,
-        WorkoutExercise::class
+        WorkoutExercise::class,
+        WorkoutLog::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun workoutExerciseDao(): WorkoutExerciseDao
+    abstract fun workoutLogDao(): WorkoutLogDao
 
     companion object {
         @Volatile

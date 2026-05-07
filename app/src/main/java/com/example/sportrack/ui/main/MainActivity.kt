@@ -24,6 +24,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.sportrack.data.DefaultExercisesSeeder
 import com.example.sportrack.ui.progress.ProgressScreen
 import com.example.sportrack.ui.settings.SettingsScreen
 import com.example.sportrack.ui.settings.SettingsViewModel
@@ -36,6 +37,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Ініціалізація бази даних стандартними вправами при першому запуску
+        DefaultExercisesSeeder.seedIfNeeded(applicationContext)
+
         setContent {
             val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
 

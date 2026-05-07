@@ -6,15 +6,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrainingScreen() {
-    val tabs = listOf("Розклад", "Почати тренування")
+    // Додали четверту вкладку
+    val tabs = listOf("Розклад", "Почати", "Вправи", "Щоденник")
     val selectedTab = remember { mutableStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Якщо вкладок багато, краще використовувати ScrollableTabRow,
+        // але для 4 штук звичайний TabRow теж підійде
         TabRow(selectedTabIndex = selectedTab.value) {
             tabs.forEachIndexed { index, title ->
                 Tab(
@@ -30,6 +32,8 @@ fun TrainingScreen() {
         when (selectedTab.value) {
             0 -> ScheduleScreen()
             1 -> StartWorkoutScreen()
+            2 -> ExercisesLibraryScreen()
+            3 -> WorkoutDiaryScreen() // Виклик нового екрану
         }
     }
 }

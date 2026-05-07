@@ -1,9 +1,15 @@
 package com.example.sportrack.ui.progress.charts
 
+import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,204 +49,285 @@ fun StrengthLineProgress(
     viewModel: ProgressViewModel
 ) {
     if (entries.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
-            Text("Немає даних для графіка")
+        Card(
+            modifier = Modifier.fillMaxWidth().height(300.dp).padding(vertical = 4.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(2.dp, Color(0xFFE5E5E5))
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Немає даних для графіка", color = Color.Gray)
+            }
         }
         return
     }
 
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
-    val secondaryColor = MaterialTheme.colorScheme.secondary.toArgb()
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary.toArgb()
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val axisColor = AndroidColor.parseColor("#999999")
 
     val sorted = remember(entries) { entries.sortedBy { it.date } }
-    val labels = remember(sorted) { sorted.map { SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date)) } }
+    val labels = remember(sorted) { sorted.map { SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(it.date)) } }
     val lineEntries = remember(sorted) { sorted.mapIndexed { idx, e -> Entry(idx.toFloat(), e.weight.toFloat()) } }
     val trendEntries = remember(lineEntries, showTrend) {
         if (showTrend && lineEntries.size >= 2) calcMeasurementTrend(lineEntries) else emptyList()
     }
 
-    AndroidView(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(260.dp)
-            .padding(8.dp),
-        factory = { ctx ->
-            LineChart(ctx).apply {
-                description = Description().apply { text = "" }
-                xAxis.position = XAxis.XAxisPosition.BOTTOM
-                axisRight.isEnabled = false
-                legend.isEnabled = true
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            }
-        },
-        update = { chart ->
-            val dataSet = LineDataSet(lineEntries, (liftType ?: "Усі типи")).apply {
-                setDrawValues(false)
-                setDrawCircles(true)
-                lineWidth = 2f
-                color = primaryColor
-                setCircleColor(primaryColor)
-            }
+            .height(300.dp)
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(2.dp, Color(0xFFE5E5E5)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    LineChart(ctx).apply {
+                        description = Description().apply { text = "" }
+                        legend.isEnabled = false
+                        setBackgroundColor(AndroidColor.TRANSPARENT)
+                        setTouchEnabled(true)
+                        isDragEnabled = true
+                        setScaleEnabled(false)
 
-            val sets = mutableListOf<ILineDataSet>(dataSet)
+                        xAxis.apply {
+                            position = XAxis.XAxisPosition.BOTTOM
+                            textColor = axisColor
+                            setDrawGridLines(false)
+                            setDrawAxisLine(false)
+                            granularity = 1f
+                            valueFormatter = object : ValueFormatter() {
+                                override fun getFormattedValue(value: Float): String {
+                                    val idx = value.toInt()
+                                    return if (idx in labels.indices) labels[idx] else ""
+                                }
+                            }
+                        }
 
-            if (showTrend && trendEntries.isNotEmpty()) {
-                val trendSet = LineDataSet(trendEntries, "Тренд").apply {
-                    setDrawCircles(false)
-                    lineWidth = 2f
-                    color = secondaryColor
-                    setDrawValues(false)
-                }
-                sets.add(trendSet)
-            }
-
-            chart.data = LineData(sets)
-
-            chart.xAxis.valueFormatter = object : ValueFormatter() {
-                override fun getFormattedValue(value: Float): String {
-                    val idx = value.toInt()
-                    return if (idx in labels.indices) labels[idx] else ""
-                }
-            }
-            chart.xAxis.setLabelCount(labels.size.coerceAtMost(6), true)
-            chart.axisLeft.setDrawGridLines(false)
-            chart.xAxis.setDrawGridLines(false)
-
-            if (showGoal && liftType != null) {
-                val goal = viewModel.getGoalFor("lift_$liftType")
-                if (goal != null) {
-                    chart.axisLeft.removeAllLimitLines()
-                    val ll = LimitLine(goal.toFloat(), "Ціль").apply {
-                        lineWidth = 2f
-                        lineColor = tertiaryColor
-                        textColor = onSurfaceColor
+                        axisLeft.apply {
+                            textColor = axisColor
+                            gridColor = AndroidColor.parseColor("#F0F0F0")
+                            setDrawAxisLine(false)
+                            spaceTop = 20f
+                            spaceBottom = 20f
+                        }
+                        axisRight.isEnabled = false
                     }
-                    chart.axisLeft.addLimitLine(ll)
-                    val yMin = (lineEntries.minOfOrNull { it.y } ?: 0f).coerceAtMost(goal.toFloat()) - 1f
-                    val yMax = (lineEntries.maxOfOrNull { it.y } ?: 0f).coerceAtLeast(goal.toFloat()) + 1f
-                    chart.axisLeft.axisMinimum = yMin
-                    chart.axisLeft.axisMaximum = yMax
-                }
-            } else {
-                chart.axisLeft.removeAllLimitLines()
-            }
+                },
+                update = { chart ->
+                    val dataSet = LineDataSet(lineEntries, (liftType ?: "Усі типи")).apply {
+                        color = primaryColor
+                        lineWidth = 3f
+                        setDrawCircles(true)
+                        setCircleColor(AndroidColor.WHITE)
+                        circleRadius = 5f
+                        circleHoleRadius = 3f
+                        circleHoleColor = primaryColor
+                        mode = LineDataSet.Mode.CUBIC_BEZIER
+                        setDrawFilled(true)
+                        fillColor = primaryColor
+                        fillAlpha = 50
+                        setDrawValues(false)
+                    }
 
-            chart.invalidate()
+                    val sets = mutableListOf<ILineDataSet>(dataSet)
+
+                    if (showTrend && trendEntries.isNotEmpty()) {
+                        val trendSet = LineDataSet(trendEntries, "Тренд").apply {
+                            color = AndroidColor.LTGRAY
+                            lineWidth = 2f
+                            enableDashedLine(10f, 10f, 0f)
+                            setDrawCircles(false)
+                            setDrawValues(false)
+                            setDrawFilled(false)
+                        }
+                        sets.add(trendSet)
+                    }
+
+                    chart.axisLeft.removeAllLimitLines()
+                    if (showGoal && liftType != null) {
+                        val goal = viewModel.getGoalFor("lift_$liftType")
+                        if (goal != null) {
+                            val ll = LimitLine(goal.toFloat(), "Ціль").apply {
+                                lineColor = AndroidColor.parseColor("#FFC107")
+                                lineWidth = 2f
+                                enableDashedLine(10f, 10f, 0f)
+                                textColor = axisColor
+                                textSize = 10f
+                            }
+                            chart.axisLeft.addLimitLine(ll)
+                        }
+                    }
+
+                    chart.data = LineData(sets)
+                    chart.invalidate()
+                }
+            )
         }
-    )
+    }
 }
 
 @Composable
 fun StrengthBarProgress(entries: List<StrengthEntry>, viewModel: ProgressViewModel) {
     if (entries.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
-            Text("Немає даних для графіка")
+        Card(
+            modifier = Modifier.fillMaxWidth().height(300.dp).padding(vertical = 4.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(2.dp, Color(0xFFE5E5E5))
+        ) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Немає даних для графіка", color = Color.Gray)
+            }
         }
         return
     }
 
     val primaryColor = MaterialTheme.colorScheme.primary.toArgb()
-    val tonnageByDay = remember(entries) {
-        viewModel.sumTonnageByDay(entries)
-    }
+    val axisColor = AndroidColor.parseColor("#999999")
+    val tonnageByDay = remember(entries) { viewModel.sumTonnageByDay(entries) }
 
     val labels = remember(tonnageByDay) {
         tonnageByDay.keys.map { SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(it)) }
     }
     val values = remember(tonnageByDay) { tonnageByDay.values.toList() }
 
-    AndroidView(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(260.dp)
-            .padding(8.dp),
-        factory = { ctx ->
-            BarChart(ctx).apply {
-                description = Description().apply { text = "" }
-                axisRight.isEnabled = false
-                xAxis.position = XAxis.XAxisPosition.BOTTOM
-                xAxis.granularity = 1f
-                legend.isEnabled = false
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            }
-        },
-        update = { chart ->
-            val entriesBar = values.mapIndexed { i, v -> BarEntry(i.toFloat(), v.toFloat()) }
-            val set = BarDataSet(entriesBar, "Тонаж за днями").apply {
-                valueTextSize = 10f
-                setDrawValues(true)
-                color = primaryColor
-            }
-            val data = BarData(set)
-            data.barWidth = 0.7f
-            chart.data = data
+            .height(300.dp)
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(2.dp, Color(0xFFE5E5E5)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    BarChart(ctx).apply {
+                        description = Description().apply { text = "" }
+                        legend.isEnabled = false
+                        setBackgroundColor(AndroidColor.TRANSPARENT)
+                        setTouchEnabled(true)
+                        isDragEnabled = true
+                        setScaleEnabled(false)
 
-            chart.xAxis.valueFormatter = object : ValueFormatter() {
-                override fun getFormattedValue(value: Float): String {
-                    val idx = value.toInt()
-                    return if (idx in labels.indices) labels[idx] else ""
+                        xAxis.apply {
+                            position = XAxis.XAxisPosition.BOTTOM
+                            textColor = axisColor
+                            setDrawGridLines(false)
+                            setDrawAxisLine(false)
+                            granularity = 1f
+                        }
+
+                        axisLeft.apply {
+                            textColor = axisColor
+                            gridColor = AndroidColor.parseColor("#F0F0F0")
+                            setDrawAxisLine(false)
+                            spaceTop = 20f
+                        }
+                        axisRight.isEnabled = false
+                    }
+                },
+                update = { chart ->
+                    val entriesBar = values.mapIndexed { i, v -> BarEntry(i.toFloat(), v.toFloat()) }
+                    val set = BarDataSet(entriesBar, "Тонаж за днями").apply {
+                        valueTextSize = 10f
+                        valueTextColor = axisColor
+                        setDrawValues(true)
+                        color = primaryColor
+                    }
+                    val data = BarData(set)
+                    data.barWidth = 0.5f // Зробив стовпчики трохи тоншими для акуратності
+                    chart.data = data
+
+                    chart.xAxis.valueFormatter = object : ValueFormatter() {
+                        override fun getFormattedValue(value: Float): String {
+                            val idx = value.toInt()
+                            return if (idx in labels.indices) labels[idx] else ""
+                        }
+                    }
+                    chart.invalidate()
                 }
-            }
-
-            chart.xAxis.setDrawGridLines(false)
-            chart.axisLeft.setDrawGridLines(false)
-            chart.invalidate()
+            )
         }
-    )
+    }
 }
 
 @Composable
 fun StrengthChart(entries: List<StrengthEntry>, viewModel: ProgressViewModel) {
-    if (entries.isEmpty()) {
-        Box(modifier = Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) {
-            Text("Немає даних для графіка")
-        }
-        return
-    }
+    if (entries.isEmpty()) return
 
     val tonnage = viewModel.sumTonnageByLiftType(entries)
     val labels = tonnage.keys.toList()
     val values = tonnage.values.toList()
+    val axisColor = AndroidColor.parseColor("#999999")
 
-    AndroidView(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
-            .padding(8.dp),
-        factory = { ctx ->
-            BarChart(ctx).apply {
-                description = Description().apply { text = "" }
-                axisRight.isEnabled = false
-                xAxis.position = XAxis.XAxisPosition.BOTTOM
-                xAxis.granularity = 1f
-                legend.isEnabled = false
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            }
-        },
-        update = { chart ->
-            val entriesBar = values.mapIndexed { i, v -> BarEntry(i.toFloat(), v.toFloat()) }
-            val set = BarDataSet(entriesBar, "Тонаж").apply {
-                valueTextSize = 10f
-                setDrawValues(true)
-                color = Color(0xFF4CAF50).toArgb()
-            }
-            val data = BarData(set)
-            data.barWidth = 0.7f
+            .height(260.dp)
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(2.dp, Color(0xFFE5E5E5)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    BarChart(ctx).apply {
+                        description = Description().apply { text = "" }
+                        legend.isEnabled = false
+                        setBackgroundColor(AndroidColor.TRANSPARENT)
+                        setScaleEnabled(false)
 
-            chart.data = data
+                        xAxis.apply {
+                            position = XAxis.XAxisPosition.BOTTOM
+                            textColor = axisColor
+                            setDrawGridLines(false)
+                            setDrawAxisLine(false)
+                            granularity = 1f
+                        }
 
-            chart.xAxis.valueFormatter = object : ValueFormatter() {
-                override fun getFormattedValue(value: Float): String {
-                    val idx = value.toInt()
-                    return if (idx in labels.indices) labels[idx] else ""
+                        axisLeft.apply {
+                            textColor = axisColor
+                            gridColor = AndroidColor.parseColor("#F0F0F0")
+                            setDrawAxisLine(false)
+                            spaceTop = 20f
+                        }
+                        axisRight.isEnabled = false
+                    }
+                },
+                update = { chart ->
+                    val entriesBar = values.mapIndexed { i, v -> BarEntry(i.toFloat(), v.toFloat()) }
+                    val set = BarDataSet(entriesBar, "Тонаж").apply {
+                        valueTextSize = 10f
+                        valueTextColor = axisColor
+                        setDrawValues(true)
+                        color = Color(0xFF4CAF50).toArgb() // Зелений колір як і був
+                    }
+                    val data = BarData(set)
+                    data.barWidth = 0.5f
+
+                    chart.data = data
+
+                    chart.xAxis.valueFormatter = object : ValueFormatter() {
+                        override fun getFormattedValue(value: Float): String {
+                            val idx = value.toInt()
+                            return if (idx in labels.indices) labels[idx] else ""
+                        }
+                    }
+                    chart.invalidate()
                 }
-            }
-            chart.xAxis.setDrawGridLines(false)
-            chart.axisLeft.setDrawGridLines(false)
-
-            chart.invalidate()
+            )
         }
-    )
+    }
 }

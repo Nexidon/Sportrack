@@ -9,262 +9,224 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.sportrack.data.AppDatabase
 import com.example.sportrack.data.model.DayAssignment
-import com.example.sportrack.ui.components.SportCard // Убедись, что SportCard создан
+import com.example.sportrack.ui.components.SportButton
+import com.example.sportrack.ui.components.SportCard
+import com.example.sportrack.ui.components.SportTextField
+import com.example.sportrack.ui.theme.SportRed
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleScreen() {
-    val muscleGroups = listOf(
+    val defaultGroups = listOf(
         "Грудні м'язи", "Спина", "Ноги", "Плечі", "Біцепс",
-        "Трицепс", "Прес", "Ягодиці", "Ікри", "Передпліччя"
+        "Трицепс", "Прес", "Сідниці", "Ікри", "Передпліччя"
     )
 
+    val muscleGroups = remember { mutableStateListOf(*defaultGroups.toTypedArray()) }
     val days = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд")
     val assignments = remember { mutableStateMapOf<String, List<String>>() }
 
-    // Состояние редактирования
     val editingDay = remember { mutableStateOf<String?>(null) }
     val isEditMode = remember { mutableStateOf(false) }
     val tempSelected = remember { mutableStateListOf<String>() }
 
-    val snackbarHostState = remember { SnackbarHostState() }
+    var showAddGroupDialog by remember { mutableStateOf(false) }
+    var groupToDelete by remember { mutableStateOf<String?>(null) }
+    var newGroupName by remember { mutableStateOf("") }
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val dao = remember { AppDatabase.getDatabase(context).dayAssignmentDao() }
+    val db = AppDatabase.getDatabase(context)
+    val dao = db.dayAssignmentDao()
 
-    // Загрузка данных
     LaunchedEffect(Unit) {
         val saved = dao.getAll()
         assignments.clear()
         saved.forEach { a ->
-            assignments[a.day] = a.groups.split(",").filter { it.isNotBlank() }
+            val groupsForDay = a.groups.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            assignments[a.day] = groupsForDay
+            groupsForDay.forEach { group ->
+                if (!muscleGroups.contains(group)) muscleGroups.add(group)
+            }
         }
     }
 
     val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.surface
-        )
+        colors = listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface)
     )
+
+    // --- ДІАЛОГ: НОВА ГРУПА ---
+    if (showAddGroupDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddGroupDialog = false },
+            title = { Text("Створити групу") },
+            text = {
+                SportTextField(value = newGroupName, onValueChange = { newGroupName = it }, placeholder = "Наприклад: Йога", modifier = Modifier.fillMaxWidth())
+            },
+            confirmButton = {
+                SportButton(text = "Додати", onClick = {
+                    if (newGroupName.isNotBlank()) {
+                        val trimmed = newGroupName.trim()
+                        if (!muscleGroups.contains(trimmed)) muscleGroups.add(trimmed)
+                        showAddGroupDialog = false
+                        newGroupName = ""
+                    }
+                }, modifier = Modifier)
+            },
+            dismissButton = { SportButton(text = "Скасувати", color = Color.Gray, onClick = { showAddGroupDialog = false }, modifier = Modifier) }
+        )
+    }
+
+    // --- ДІАЛОГ: ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ ГРУПИ ---
+    if (groupToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { groupToDelete = null },
+            title = { Text("Видалити групу?") },
+            text = { Text("Група '${groupToDelete}' буде видалена з усіх днів розкладу. Вправи в базі залишаться.") },
+            confirmButton = {
+                SportButton(text = "Видалити", color = SportRed, modifier = Modifier, onClick = {
+                    val groupName = groupToDelete!!
+                    scope.launch {
+                        // 1. Видаляємо зі списку доступних
+                        muscleGroups.remove(groupName)
+                        // 2. Очищаємо всі дні в базі від цієї групи
+                        val allFromDb = dao.getAll()
+                        allFromDb.forEach { entry ->
+                            val updatedGroups = entry.groups.split(",")
+                                .map { it.trim() }
+                                .filter { it != groupName && it.isNotBlank() }
+
+                            dao.insert(entry.copy(groups = updatedGroups.joinToString(",")))
+                        }
+                        // 3. Оновлюємо локальний стан розкладу
+                        assignments.keys.forEach { day ->
+                            assignments[day] = assignments[day]?.filter { it != groupName } ?: emptyList()
+                        }
+                        if (tempSelected.contains(groupName)) tempSelected.remove(groupName)
+                        groupToDelete = null
+                    }
+                })
+            },
+            dismissButton = { SportButton(text = "Скасувати", onClick = { groupToDelete = null }, modifier = Modifier) }
+        )
+    }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Rozklad", style = MaterialTheme.typography.titleLarge) // Или "Розклад тренувань"
-                        Text(
-                            text = "Натисни на день",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+                title = { Text("Розклад", style = MaterialTheme.typography.titleLarge) },
                 actions = {
                     IconButton(onClick = { isEditMode.value = !isEditMode.value }) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            tint = if (isEditMode.value) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
+                        Icon(Icons.Default.Edit, null, tint = if (isEditMode.value) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp)
-                )
+                }
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        content = { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundBrush)
-                    .padding(innerPadding)
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
-            ) {
-                // --- БЛОК ДНЕЙ НЕДЕЛИ ---
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp), // Более округлые углы
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp), // Чуть плотнее
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp)
-                    ) {
-                        days.forEach { day ->
-                            val assignedForDay = assignments[day] ?: emptyList()
-                            val hasAssigned = assignedForDay.isNotEmpty()
-                            val isSelectedDay = editingDay.value == day
-
-                            // Тут используем обычную Card, так как это маленькие кнопки
-                            // Но стилизуем их под наш дизайн
-                            Card(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(64.dp)
-                                    .clickable {
-                                        if (isSelectedDay) {
-                                            editingDay.value = null
-                                            tempSelected.clear()
-                                            isEditMode.value = false
-                                        } else {
-                                            editingDay.value = day
-                                            tempSelected.clear()
-                                            tempSelected.addAll(assignedForDay)
-                                            isEditMode.value = false
-                                        }
-                                    },
-                                shape = RoundedCornerShape(12.dp),
-                                border = if (hasAssigned && !isSelectedDay) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelectedDay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            ) {
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = day,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = if (isSelectedDay) Color.White else MaterialTheme.colorScheme.onSurface
-                                        )
-                                        if (hasAssigned) {
-                                            // Маленькая точка вместо текста, чтобы не забивать место
-                                            Text("•", color = if(isSelectedDay) Color.White else MaterialTheme.colorScheme.primary)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // --- СЕТКА МЫШЦ (SportCard) ---
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(muscleGroups) { group ->
-                        val isEditing = isEditMode.value && editingDay.value != null
-                        val inTemp = tempSelected.contains(group)
-                        val assignedDays = assignments.filter { it.value.contains(group) }.keys.toList()
-
-                        // Логика: активна ли карточка?
-                        // Если редактируем -> активна, если выбрана во временном списке.
-                        // Если просто смотрим -> активна, если выбрана в текущем дне (editingDay)
-                        val highlightForSelectedDay = editingDay.value != null && assignments[editingDay.value]?.contains(group) == true
-                        val isActive = if (isEditing) inTemp else highlightForSelectedDay
-
-                        // Логика: какой подтекст показать?
-                        val subtitleText = when {
-                            isEditing && inTemp -> "✓ Вибрано"
-                            !isEditing && assignedDays.isNotEmpty() -> assignedDays.joinToString(", ")
-                            else -> null
-                        }
-
-                        // ВОТ ЗДЕСЬ ИСПОЛЬЗУЕМ НОВЫЙ КОМПОНЕНТ
-                        SportCard(
-                            title = group,
-                            subtitle = subtitleText,
-                            isActive = isActive,
-                            onClick = {
-                                if (isEditing) {
-                                    if (inTemp) tempSelected.remove(group)
-                                    else tempSelected.add(group)
-                                }
-                            }
-                        )
-                    }
-                }
-
-                // --- ПАНЕЛЬ РЕДАКТИРОВАНИЯ (Снизу) ---
-                if (editingDay.value != null) {
-                    Spacer(Modifier.height(12.dp))
-                    val day = editingDay.value!!
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Редагування: $day", style = MaterialTheme.typography.titleMedium)
-                            Spacer(Modifier.height(8.dp))
-
-                            if (!isEditMode.value) {
-                                Button(
-                                    onClick = { isEditMode.value = true },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(Icons.Default.Edit, contentDescription = null)
-                                    Spacer(Modifier.size(8.dp))
-                                    Text("Змінити групи")
-                                }
-                            } else {
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    // Кнопка Сохранить
-                                    Button(
-                                        onClick = {
-                                            val selected = tempSelected.toList()
-                                            assignments[day] = selected
-                                            scope.launch {
-                                                dao.insert(DayAssignment(day, selected.joinToString(",")))
-                                                snackbarHostState.showSnackbar("Збережено для $day")
-                                            }
-                                            editingDay.value = null
-                                            tempSelected.clear()
-                                            isEditMode.value = false
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text("Зберегти")
-                                    }
-
-                                    // Кнопка Отмена (Outlined)
-                                    OutlinedButton(
-                                        onClick = {
-                                            editingDay.value = null
-                                            tempSelected.clear()
-                                            isEditMode.value = false
-                                        },
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Icon(Icons.Default.Close, contentDescription = null)
-                                    }
-                                }
+        }
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().background(backgroundBrush).padding(innerPadding).padding(12.dp)) {
+            // Блок днів
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+                    days.forEach { day ->
+                        val isSelected = editingDay.value == day
+                        Card(
+                            modifier = Modifier.weight(1f).height(64.dp).clickable {
+                                editingDay.value = day
+                                tempSelected.clear()
+                                tempSelected.addAll(assignments[day] ?: emptyList())
+                                isEditMode.value = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(day, color = if (isSelected) Color.White else Color.Unspecified)
                             }
                         }
                     }
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = { showAddGroupDialog = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Створити нову групу")
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Сітка груп
+            LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(muscleGroups) { group ->
+                    val isEditing = isEditMode.value && editingDay.value != null
+                    val isActive = if (isEditing) tempSelected.contains(group) else assignments[editingDay.value]?.contains(group) == true
+
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        SportCard(
+                            title = group,
+                            isActive = isActive,
+                            onClick = {
+                                if (isEditing) {
+                                    if (tempSelected.contains(group)) tempSelected.remove(group) else tempSelected.add(group)
+                                }
+                            }
+                        )
+
+                        // Кнопка видалення (тільки для кастомних груп у режимі редагування)
+                        if (isEditMode.value && !defaultGroups.contains(group)) {
+                            IconButton(
+                                onClick = { groupToDelete = group },
+                                modifier = Modifier.align(Alignment.TopEnd).size(32.dp).padding(4.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = SportRed, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (editingDay.value != null) {
+                Card(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), elevation = CardDefaults.cardElevation(8.dp)) {
+                    Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (!isEditMode.value) {
+                            SportButton(text = "Редагувати ${editingDay.value}", modifier = Modifier.weight(1f), onClick = { isEditMode.value = true })
+                        } else {
+                            SportButton(text = "Зберегти", modifier = Modifier.weight(1f), onClick = {
+                                val selected = tempSelected.toList()
+                                assignments[editingDay.value!!] = selected
+                                scope.launch {
+                                    dao.insert(DayAssignment(editingDay.value!!, selected.joinToString(",")))
+                                    isEditMode.value = false
+                                }
+                            })
+                            OutlinedButton(onClick = { isEditMode.value = false }, shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.Close, null) }
+                        }
+                    }
+                }
+            }
         }
-    )
+    }
 }
